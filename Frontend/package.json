@@ -1,0 +1,29 @@
+{
+  "name": "library-app-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
+    "generate:api": "openapi --input http://localhost:5080/swagger/v1/swagger.json --output src/api/generated --client axios --useOptions --useUnionTypes"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "axios": "^1.12.2",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.22",
+    "vue-router": "^4.5.1",
+    "vuetify": "^3.10.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "openapi-typescript-codegen": "^0.29.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.7",
+    "vue-tsc": "^3.1.0"
+  }
+}
