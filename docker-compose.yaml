@@ -1,0 +1,71 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-LibraryApp_Strong_Passw0rd!}"
+    ports:
+      - "${SQL_PORT:-1433}:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa
+          -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-LibraryApp_Strong_Passw0rd!}"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        /opt/mssql-tools18/bin/sqlcmd -S db -U sa
+        -P "$$MSSQL_SA_PASSWORD" -C -b
+        -Q "IF DB_ID(N'LibraryApp') IS NULL CREATE DATABASE [LibraryApp];"
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: WebAPI/Dockerfile
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      Database__RunMigrationsOnStartup: "true"
+      ConnectionStrings__DefaultConnection: >-
+        Server=db,1433;Database=LibraryApp;User Id=sa;
+        Password=${MSSQL_SA_PASSWORD:-LibraryApp_Strong_Passw0rd!};
+        Encrypt=True;TrustServerCertificate=True
+    volumes:
+      - backend-logs:/app/logs
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    restart: unless-stopped
+
+volumes:
+  sql-data:
+  backend-logs:
