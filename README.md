@@ -8,10 +8,12 @@
 
 ```bash
 git clone https://github.com/PavelRubis/LibraryApp.git
-
+```
+```bash
 cd LibraryApp
-
-docker compose up
+```
+```bash
+docker compose up -d
 ```
 
 При первом запуске Compose соберёт frontend и backend, дождётся готовности SQL Server, создаст базу `LibraryApp` и применит миграции.

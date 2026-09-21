@@ -58,6 +58,26 @@ public sealed class LibraryApiTests(LibraryApiFactory factory) : IClassFixture<L
     }
 
     [Fact]
+    public async Task ConcurrentAuthorCreationWithSameNameAllowsOnlyOneAuthor()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var name = $"UniqueAuthor{Guid.NewGuid():N}";
+
+        var firstCreation = _client.PostAsJsonAsync("/api/authors", new CreateAuthorRequest(name), cancellationToken);
+        var secondCreation = _client.PostAsJsonAsync("/api/authors", new CreateAuthorRequest(name), cancellationToken);
+
+        var responses = await Task.WhenAll(firstCreation, secondCreation);
+        Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Created);
+        Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+
+        await using var connection = new SqlConnection(factory.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand("SELECT COUNT(*) FROM library.Authors WHERE Name = @Name AND IsDeleted = 0", connection);
+        command.Parameters.AddWithValue("Name", name);
+        Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)));
+    }
+
+    [Fact]
     public async Task DeletionUsesSoftDeleteAndProtectsUsedAuthor()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

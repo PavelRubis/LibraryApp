@@ -3,6 +3,7 @@ using Application.Common;
 using Application.Dependencies.DataAccess;
 using Dapper;
 using Domain.Entities;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Data;
@@ -87,6 +88,11 @@ internal sealed class AuthorRepository(
         {
             return await action();
         }
+        catch (SqlException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            logger.LogError(exception, "Failed to {DatabaseOperation} for author {AuthorId}", operation, id);
+            throw new ConflictException("An active author with the same name already exists.");
+        }
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to {DatabaseOperation} for author {AuthorId}", operation, id);
@@ -106,6 +112,8 @@ internal sealed class AuthorRepository(
             throw;
         }
     }
+
+    private static bool IsUniqueConstraintViolation(SqlException exception) => exception.Errors.Cast<SqlError>().Any(error => error.Number is 2601 or 2627);
 
     private static Author Map(AuthorRow row) => new()
     {

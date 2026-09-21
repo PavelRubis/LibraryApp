@@ -6,15 +6,6 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    IF EXISTS (
-        SELECT 1
-        FROM library.Authors WITH (UPDLOCK, HOLDLOCK)
-        WHERE Name = @Name AND IsDeleted = 0)
-    BEGIN
-        SELECT 2;
-        RETURN;
-    END;
-
     INSERT INTO library.Authors (Id, Name)
     VALUES (@Id, @Name);
 
@@ -30,15 +21,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
-
-    IF EXISTS (
-        SELECT 1
-        FROM library.Authors WITH (UPDLOCK, HOLDLOCK)
-        WHERE Name = @Name AND Id <> @Id AND IsDeleted = 0)
-    BEGIN
-        SELECT 2;
-        RETURN;
-    END;
 
     UPDATE library.Authors
     SET Name = @Name,
