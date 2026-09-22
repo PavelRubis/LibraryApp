@@ -11,7 +11,14 @@ public sealed class SearchBooksQueryHandler(IUnitOfWork unitOfWork)
 {
     public async Task<PagedResult<BookListItemDto>> Handle(SearchBooksQuery request, CancellationToken cancellationToken)
     {
-        var result = await unitOfWork.Books.SearchAsync(request.Query?.Trim(), request.Page, request.PageSize, cancellationToken);
+        var searchCriteria = new BookSearchCriteria(
+            request.Query?.Trim(),
+            BookSearchFields.All);
+        var result = await unitOfWork.Books.SearchBookBySearchCriterias(
+            searchCriteria,
+            request.Page,
+            request.PageSize,
+            cancellationToken);
         return new PagedResult<BookListItemDto>(result.Items.Select(x => x.ToListItemDto()).ToArray(), result.Page, result.PageSize, result.TotalCount);
     }
 }

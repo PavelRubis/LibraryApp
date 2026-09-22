@@ -23,8 +23,12 @@ internal sealed class BookRepository(
     public Task RemoveAsync(Guid id, byte[] expectedRowVersion, CancellationToken cancellationToken = default) 
         => RunAsync(() => RemoveCoreAsync(id, expectedRowVersion, cancellationToken), "delete book", id);
 
-    public Task<PagedResult<Book>> SearchAsync(string? query, int page, int pageSize, CancellationToken cancellationToken = default) 
-        => RunAsync(() => SearchCoreAsync(query, page, pageSize, cancellationToken), "search books");
+    public Task<PagedResult<Book>> SearchBookBySearchCriterias(
+        BookSearchCriteria searchCriteria,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+        => RunAsync(() => SearchCoreAsync(searchCriteria, page, pageSize, cancellationToken), "search books");
 
     private async Task<Book?> GetByIdCoreAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -68,12 +72,22 @@ internal sealed class BookRepository(
         status.EnsureRemoved("Book");
     }
 
-    private async Task<PagedResult<Book>> SearchCoreAsync(string? query, int page, int pageSize, CancellationToken cancellationToken)
+    private async Task<PagedResult<Book>> SearchCoreAsync(
+        BookSearchCriteria searchCriteria,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
     {
         var connection = await session.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(
             "library.Book_Search",
-            new { Query = query, Page = page, PageSize = pageSize },
+            new
+            {
+                searchCriteria.Query,
+                SearchFields = (int)searchCriteria.Fields,
+                Page = page,
+                PageSize = pageSize
+            },
             session.Transaction,
             commandType: CommandType.StoredProcedure,
             cancellationToken: cancellationToken);

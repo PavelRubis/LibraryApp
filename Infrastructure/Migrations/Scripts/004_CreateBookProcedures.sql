@@ -141,6 +141,7 @@ GO
 
 CREATE OR ALTER PROCEDURE library.Book_Search
     @Query nvarchar(300) = NULL,
+    @SearchFields int = 7,
     @Page int = 1,
     @PageSize int = 20
 AS
@@ -166,14 +167,14 @@ BEGIN
     SELECT @TotalCount = COUNT(*)
     FROM library.ActiveBooks b
     WHERE @Pattern IS NULL
-       OR b.Title LIKE @Pattern ESCAPE N'~'
-       OR CONVERT(nvarchar(max), b.TableOfContents) COLLATE Cyrillic_General_100_CI_AI LIKE @Pattern ESCAPE N'~'
-       OR EXISTS (
+       OR ((@SearchFields & 1) = 1 AND b.Title LIKE @Pattern ESCAPE N'~')
+       OR ((@SearchFields & 4) = 4 AND CONVERT(nvarchar(max), b.TableOfContents) COLLATE Cyrillic_General_100_CI_AI LIKE @Pattern ESCAPE N'~')
+       OR ((@SearchFields & 2) = 2 AND EXISTS (
             SELECT 1
             FROM library.BookAuthors ba
             INNER JOIN library.ActiveAuthors a ON a.Id = ba.AuthorId
             WHERE ba.BookId = b.Id
-              AND a.Name LIKE @Pattern ESCAPE N'~');
+              AND a.Name LIKE @Pattern ESCAPE N'~'));
 
     ;WITH Candidates AS
     (
@@ -181,14 +182,14 @@ BEGIN
                ROW_NUMBER() OVER (ORDER BY b.Title, b.Id) AS SortOrder
         FROM library.ActiveBooks b
         WHERE @Pattern IS NULL
-           OR b.Title LIKE @Pattern ESCAPE N'~'
-           OR CONVERT(nvarchar(max), b.TableOfContents) COLLATE Cyrillic_General_100_CI_AI LIKE @Pattern ESCAPE N'~'
-           OR EXISTS (
+           OR ((@SearchFields & 1) = 1 AND b.Title LIKE @Pattern ESCAPE N'~')
+           OR ((@SearchFields & 4) = 4 AND CONVERT(nvarchar(max), b.TableOfContents) COLLATE Cyrillic_General_100_CI_AI LIKE @Pattern ESCAPE N'~')
+           OR ((@SearchFields & 2) = 2 AND EXISTS (
                 SELECT 1
                 FROM library.BookAuthors ba
                 INNER JOIN library.ActiveAuthors a ON a.Id = ba.AuthorId
                 WHERE ba.BookId = b.Id
-                  AND a.Name LIKE @Pattern ESCAPE N'~')
+                  AND a.Name LIKE @Pattern ESCAPE N'~'))
     )
     INSERT INTO #PagedBooks (Id, SortOrder)
     SELECT Id, SortOrder
@@ -220,4 +221,3 @@ BEGIN
     SELECT @TotalCount;
 END;
 GO
-
